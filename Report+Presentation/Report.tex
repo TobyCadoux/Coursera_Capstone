@@ -1,0 +1,416 @@
+\documentclass[a4paper,12pt,final,UKenglish]{article}
+
+%AMS bits
+\usepackage{amssymb,amsfonts,amsthm}
+\usepackage{amsmath}
+
+%Symbols other than AMS
+\usepackage{upgreek,wasysym,bm}
+
+%Page layout
+\usepackage{fancyhdr,geometry}
+
+%hyperref
+\usepackage{hyperref}
+\hypersetup{colorlinks, linkcolor=blue}
+
+%dvips driver
+%\usepackage[dvips]{graphicx}
+
+%For verbatim text - better to use \texttt
+\usepackage{verbatim}
+
+%British dates and spellings
+\usepackage{babel}
+\usepackage{isodate}
+\cleanlookdateon %No 'st', 'nd', 'rd' or 'th'
+
+%Allow crossings-out
+\usepackage{cancel}
+
+%Better referencing
+\usepackage{varioref}
+\usepackage{cleveref}
+\Crefname{figure}{Figure}{Figure}
+\Crefname{table}{Table}{Table}
+
+\usepackage{subcaption}
+
+\usepackage{dcolumn}
+
+\usepackage{tikz,pgfplots}
+\usetikzlibrary{calc,intersections,through,backgrounds}
+\usetikzlibrary{decorations.markings,arrows}
+%This should stop pesky TikZ warnings!
+\pgfplotsset{compat=1.14}
+
+\renewcommand{\comment}[1]{}
+
+% Headers and footers
+% Size of header space, not too large
+\pagestyle{fancy}
+\headheight 18pt
+\lhead{Toby Cadoux}
+\rhead{Neighbourhoods in Milwaukee and London}
+%Paragraph spacing, small gaps, no indent
+\parskip 3pt
+\parindent 0pt
+
+%\renewcommand{\footnotesize}{\scriptsize}
+
+\title{Neighbourhoods in Milwaukee and London}
+\author{Toby Cadoux}
+\date{\today}
+
+
+\begin{document}
+	\maketitle
+	\section{Introduction}
+        \subsection{Background}
+            In this work I will be comparing and contrasting neighbourhoods in two cities.
+            I come from London while my wife comes from Milwaukee.
+            When we visit it would be nice to know which neighbourhoods within her city are similar to the one in which she was raised.
+            It would also be nice to know which neighbourhoods in Milwaukee are the similar to the one in which we live in London.
+            Finally, we are considering moving (within London) fairly soon and so a categorisation of localities would potential enable us to narrow down our search for a new home.
+        \subsection{Approach}
+            When thinking about neighbourhoods there are as many definitions of borders and extent as there are people who know the areas.
+            I decided to use a different definition of `neighbourhood' for each city.
+
+            There were 76 neighbourhoods in Milwaukee that were officially recognised by the city council in 1990.
+            The most recent city council definitions I could find, from 2000, had 190 neighbourhoods listed%
+            \footnote{The Milwaukee DCD gives \href
+                {https://data.milwaukee.gov/dataset/0f5695f6-bca1-46e9-832b-54d1d906d28e/resource/f69d2c4b-e0d7-406e-98fe-1e888a3304b1/download/neighborhood.zip}
+                {ArcGIS neighbourhood definitions}.}%
+            \footnote{The city also has \href
+                {https://city.milwaukee.gov/Neighborhoods}
+                {a map of neighbourhoods}.}.
+            Milwaukee is not a large city compared with London and this number of neighbourhoods seemed excessive.
+            In the end I decided to use a list prepared by the University of Wisconsin – Milwaukee%
+            \footnote{\href{https://guides.library.uwm.edu/c.php?g=56373\&p=362687}{Found here}.}.
+            This lists 48 neighbourhoods and roughly matches the list on Wikipedia%
+            \footnote{Wikipedia has a \href{https://en.wikipedia.org/wiki/List\_of\_neighborhoods\_of\_Milwaukee}
+            {List of Milwaukee neighbourhoods}.}
+            but with its more historic focus it is likely to match my wife's and her family's notions more closely.
+            Many of the newer neighbourhoods are a long way outside what most would consider `Milwaukee proper'.
+
+            London is divided into 32 boroughs and the City of London (the City of Westminster is also a borough).
+            The boroughs are diverse and consequently, especially considering London's size, I decided not to use these division to represent neighbourhoods.
+            Instead I used the much smaller postcode areas (SW19, E1 etc.)
+            This is a fairly common way that Londoners reference individual neighbourhoods, moreover it conveniently separates central and inner London from he outer suburbs.
+            There are 119 London postcode areas%
+            \footnote{See the \href{https://en.wikipedia.org/wiki/London\_postal\_district}{Wikipedia page} for the London postcode areas.},
+            which all have higher populations than any of the neighbourhoods in Milwaukee.
+
+            To measure similarity I decided attempt to use two main metrics:
+            \begin{itemize}
+                \item The first is the mix of consumer businesses, amenities and leisure venues as compiled by Foursquare.
+                The Foursquare information is present in both London and Milwaukee.
+                \item The second is to look at average house prices for each neighbourhood (relative to the overall house price average).
+                This will be simple enough in London --- Land Registry records in London all have a postcode attached.
+                Real estate sales in Milwaukee are listed by address so, for this to work, I will need a way to apportion addresses in Milwaukee to the correct neighbourhoods.
+                Despite a number of small value ($<$\$500) properties and a smaller number of high value properties ($>$£20m),
+                I will use a mean average price as I am looking at property values as a proxy for affluence.
+            \end{itemize}
+
+            A successful outcome will be successfully clustering neighbourhoods in both cities to find the most similar locations in terms of amenities and (relative) house prices.
+
+    \section{Data}
+        I will be using the following data sources
+        \begin{itemize}
+            \item A list of historic, mainly central, neighbourhoods of the city of Milwaukee.
+            This can be found \href{https://guides.library.uwm.edu/c.php?g=56373\&p=362687}{here}.
+            I simply scraped the names of the neighbourhoods directly.
+            
+            \item Their locations were obtained from Open Street Map's \href{https://nominatim.org/}{Nominatim} service%
+            \footnote{© OpenStreetMap contributors.  Full licence details \href{https://www.openstreetmap.org/copyright}{here}.}
+            through the \href{https://pypi.org/project/geocoder/}{Python Geocoder package}.            
+            \item A \href{https://guides.library.uwm.edu/c.php?g=56373&p=362687}{CSV file of real estate transactions} in Milwaukee City from the City Council.
+            I used the data from 2018 as this was the most recent data available for both cities.
+            
+            \item To enable allocation of each address to its neighbourhood I had to obtain the latitude and longitude which was accomplished by leveraging
+            the United States Census Bureau through its \href{https://geocoding.geo.census.gov/geocoder/}{\textit{Geocoder} API}.
+            
+            Allocating sales to postcodes is easy in London as every property has an associated postcode in 
+            \item HM Land Registry \href{prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-2018.csv}{CSV list of property transactions} in England and Wales%
+            \footnote{Contains HM Land Registry data © Crown copyright and database right 2020.\par
+            \phantom{\ $^8$}This data is licensed under the Open Government Licence v3.0}.
+           
+            \item To obtain the centroids of postcode areas I used the Ordnance Survey’s list of
+            \href{https://www.ordnancesurvey.co.uk/opendatadownload/products.html#CODEPO}{postcode unit locations}, part of Code-Point Open.
+            This is available as a free CSV download but requires an email address to receive a download link%
+            \footnote{© Ordnance Survey Limited, 2020.\par
+            \phantom{\ $^8$}This data is licensed under the Open Government Licence v3.0.}.
+            
+            \item Foursquare’s \href{https://developer.foursquare.com/docs/places-api/}{\textit{Places} API}.
+            
+            \item The British Geological Survey’s \href{https://www.bgs.ac.uk/data/webservices/convertForm.cfm}{web service} to convert Eastings/Northings to Latitudes/Longitudes.
+        \end{itemize}
+
+    \section{Methodology}
+        \subsection{Data collection and preparation for Milwaukee}
+            I initially scraped the UWM website mentioned above to give a list of Milwaukee neighbourhoods.
+            This list was particularly focused on the older, more historic and more central neighbourhoods that I prefer.
+            There are other lists but this struck a balance between sizes of neighbourhoods and preferred locations.
+
+            Location data were given in more than one format which I invariably converted to Latitude/Longitude before use.
+            
+            I found the location of each neighbourhood using the OpenStreetMap Nominatim API which gave most a location although
+            I had to omit three neighbourhoods that neither I nor OSM knew.
+            I suspect these are historic neighbourhoods that no longer exist.
+            Another neighborhood, Granville Station, is not considered to be part of the city by most and so was also removed.
+            
+            Property prices were obtained from the City council, an example record is shown in \Cref{fig:salesdata}.
+            \begin{table}[ht]
+                \centering
+                \begin{tabular}{c|c|c}
+                    \texttt{PropType}       & \texttt{Address}          & \texttt{Sale\_price}\\\hline
+                    \texttt{Residential}    & \texttt{7144 N 38TH ST}   & \texttt{129000}
+                \end{tabular}
+                \caption{Milwaukee real estate sales\label{fig:salesdata}}
+            \end{table}
+            
+            The 2018 data was the most recent that was available and validated for both cities.
+            I felt it unlikely that neighbourhoods would change significantly in under 24 months.
+
+            I needed to allocate each property to a neighbourhood which meant finding the latitude and longitude for each sale.
+            The US Census Bureau provides and API for just this purpose.
+            Once I had the distance to the nearest centre for every sale I excluded those over {1.5\,km} from the centre of their neighbourhood.
+            This was because sales in outlying areas would sometimes be allocated to neighbourhoods up to {8km} away of which they are obviously not part.
+            In \Cref{fig:SalesLocs} the green dots are sales and the blue circles are neighbourhood centres.
+            It should be clear that sales near, for example, Brown Deer are not part of any of the neighbourhoods despite having a closest centre.
+            \begin{figure}[htb]
+                \centering
+                \includegraphics[bb=0 0 414 402,scale=0.4]{graphics/MKESalesLocations.png}
+                % MKESalesLocations.png: 552x536 px, 96dpi, 14.60x14.18 cm, bb=0 0 414 402
+                \caption{Locations of Milwaukee real estate sales\label{fig:SalesLocs}}
+            \end{figure}
+            
+            The neighbourhoods do not cover large parts of the city - but do cover all the more central areas.  There were few sales in some areas
+            because these are primarily industrial zones in the modern city and the very centre of the city is dominated by rental properties, flats
+            condos whose prices cannot be easily extracted from the city's data which is about land sales.
+            
+            I decided to use mean house prices in neighbourhoods despite a small number of properties with very low values e.g.\ \$100.
+            Three neighbourhoods had fewer than 3 sales but I let the values stand as none was ludicrous.
+            Given time I would have gathered sales data from, say 2017--2020, to ensure all neighbourhoods were given more robust average property values.
+            
+            A `venue' can be anything from a supermarket to a river to a theatre to a sportsground.
+            I used the FourSquare API to pull data for the top 100 venues in each neighbourhood (most had less than 100) within 750m of the centre.
+            Each venue has a category of what type of place it is.
+            I extracted the categories and one-hot encoded them for each neighbourhood, taking a mean to get proportions of venue categories in each.
+                Find clusters of similar properties
+
+        \subsection{Data collection and preparation for London}
+            London postcodes are remarkably regular and just knowing the eight district prefixes and how many postcode areas there are (from Wikipedia) I was able
+            to generate them all.  I did not include non-geographic postcode areas, nor E20 --- the Olympic Park area.
+            
+            The Ordnance Survey provides a list of postcodes units with their locations.  I took the mean of the Eastings and Northings for each postcode
+            unit and use the British Geographic Society's web servuce to convert these to latitude/longitude format.  This meant I had the centre of each
+            postcode area as shown in \Cref{fig:postcodes}.  Although not a geometric centre it should be good enough.
+            \begin{figure}[htb]
+                \centering
+                \includegraphics[bb=0 0 586 431,scale=0.4]{graphics/Postcodes.png}
+                % Postcodes.png: 782x575 px, 96dpi, 20.69x15.21 cm, bb=0 0 586 431
+                \caption{Centres of postcode areas in London}
+                \label{fig:postcodes}
+            \end{figure}
+
+            HM Land Registry's list of property sales in England and Wales is a large file.
+
+            An example entry could is shown in \Cref{fig:hmlr_data} with the irrelevant fields omitted.
+            \begin{table}[ht]
+                \centering
+                \begin{tabular}{c|c|c|c}
+                    \texttt{Price}  & \texttt{Postcode} & \texttt{PropType} & \texttt{ValueType}\\\hline
+                    \texttt{745000} & \texttt{SW19 2BZ} & \texttt{T}        & \texttt{A}
+                \end{tabular}
+                \caption{London property sales}
+                \label{fig:hmlr_data}
+            \end{table}
+
+            I excluded commercial properties (\texttt{PropType==O}) and properties were the true value was not paid (\texttt{ValueType==B})
+            then dropped these fields.  I then allocated each postcode area the average of property values sold within it.
+            
+            As with Milwaukee I pulled in the Foursquare venue list within 750\,m, extracted the categories, one-hot encoded them and took means to find
+            the proportions in each postcode area.
+
+            Looking at London property prices I realised they were very skewed, as shown in \Cref{fig:Londonprices}.
+\begin{figure}[htb]
+ \centering
+ \includegraphics[bb=0 0 274 208,scale=0.3]{graphics/Londonprices.png}
+ % Londonprices.png: 366x278 px, 96dpi, 9.68x7.35 cm, bb=0 0 274 208
+ \caption{Average house prices in london neighbourhoods (£)}
+ \label{fig:Londonprices}
+\end{figure}
+
+            The usual way to fix skew is to transform the data by a transformation from%
+            \[\{\ldots,x^3,x^2,\sqrt{\!x},\log{x},\frac1{\sqrt{\!x}},\frac1x,\frac1{x^2},\ldots\}\]
+            It turned out in this case that $\log{x}$ gave the most symmetric distribution as shown in \Cref{fig:Londonlogprices}.
+            
+\begin{figure}[htb]
+ \centering
+ \includegraphics[bb=0 0 276 295,scale=0.3]{graphics/Londonlogprices.png}
+ % Londonlogprices.png: 368x393 px, 96dpi, 9.74x10.40 cm, bb=0 0 276 295
+ \caption{Log of neighbourhood house prices in London}
+ \label{fig:Londonlogprices}
+\end{figure}
+            
+            I went back to consider Milwaukee prices and they suffered the same problem, shown in \Cref{fig:mkeprices} (where house prices were scaled so the average across the city was 1.0).
+\begin{figure}[htb]
+ \centering
+ \includegraphics[bb=0 0 280 197,scale=0.5]{graphics/mkeprices.png}
+ % mkeprices.png: 373x263 px, 96dpi, 9.87x6.96 cm, bb=0 0 280 197
+ \caption{Scaled neighbourhood house prices in Milwaukee}
+ \label{fig:mkeprices}
+\end{figure}
+            This had the same solution --- a logarithmic transformation which resulted in \Cref{fig:mkelogprices}.
+\begin{figure}[htb]
+ \centering
+ \includegraphics[bb=0 0 241 277,scale=0.5]{graphics/mkelogprices.png}
+ % mkelogprices.png: 321x369 px, 96dpi, 8.49x9.76 cm, bb=0 0 241 277
+ \caption{Log of scaled neighbourhood house prices in Milwaukee}
+ \label{fig:mkelogprices}
+\end{figure}
+
+
+
+        \subsection{Looking for similar neighbourhoods in each city}
+        I used the same approach in each city:
+        \begin{itemize}
+            \item Use k-means clustering over a range of values of k.
+            \item Choose the values of k that split the data most evenly with the least number of singleton clusters.
+            \item Map the clusters.
+            \item Produce a silhouette plot to help assess the quality of clustering.
+        \end{itemize}
+        
+        \subsection{Comparing all neighbourhoods}
+        In order to compare neighbourhoods from both cities I had to standardise each separately take account of the differences in house values and currencies.
+        I then concatenated the two sets using an inner join so that only the categories they both had at least one of would be used for comparisons.
+        This meant that 39 categories unique to Milwaukee were unused and also 205 items from London were not compared.
+        Given that there were still nearly 200 categories I felt this would be enough.
+        Nevertheless I was conscious that many neighbourhoods might have 0 of some category in common and removing the category removes that aspect of similarity.
+        
+        Following this I followed the same procedure as for the individual cities - trying a range of values of k and choosing the ones that split the
+        neighborhoods more evenly, with as few singleton clusters as possible.  This time I could obviously not map both sets of neighbourhoods but could
+        still produce silhouette plots.
+        
+        Having identified the most likely sets of groupings of clusters I combined these to find places similar to where I live or would like to live in both cities.
+    
+    \section{Results}
+        \subsection{Milwaukee}
+            I used a black and white map to allow coloured clusters to be easily seen and distinguished.
+            The best number of clusters for Milwaukee was 8 which is mapped in \Cref{fig:MKEclusters}.
+\begin{figure}[htb]
+ \centering
+ \includegraphics[bb=0 0 681 435,scale=0.5]{graphics/mke_clusters.png}
+ % mke_clusters.png: 908x580 px, 96dpi, 24.02x15.34 cm, bb=0 0 681 435
+ \caption{Similar neighbourhoods in Milwaukee}
+ \label{fig:MKEclusters}
+\end{figure}
+            However the silhouette plot in \Cref{fig:MKEsil} showed that these clusters are not terribly well-defined.  This was backed up by the fact that
+            although usually similar, clustering with random initial positions, occasionally gave very different groups.  The ones shown in \Cref{fig:MKEclusters}
+            were quite typical.
+\begin{figure}[htb]
+ \centering
+ \includegraphics[bb=0 0 436 314,scale=0.4]{graphics/mke_sil.png}
+ % mke_sil.png: 582x419 px, 96dpi, 15.40x11.08 cm, bb=0 0 436 314
+ \caption{Quality of clusters in Milwaukee}
+ \label{fig:MKEsil}
+\end{figure}
+        \subsection{London}
+            The picture for London was, if anything, worse.  The optimum number of clusters seemed to be 12 as shown in \Cref{fig:LDNclusters}.
+\begin{figure}[htb]
+ \centering
+ \includegraphics[bb=0 0 677 433,scale=0.5]{graphics/ldn_clusters.png}
+ % ldn_clusters.png: 903x578 px, 96dpi, 23.89x15.29 cm, bb=0 0 677 433
+ \caption{Similar neighbourhoods in London}
+ \label{fig:LDNclusters}
+\end{figure}
+            While the silhouette plot in \Cref{fig:LDNsil} showed that only one cluster was close to being well-defined.
+\begin{figure}[htb]
+ \centering
+ \includegraphics[bb=0 0 490 352,scale=0.4]{graphics/ldn_sil.png}
+ % ldn_sil.png: 653x470 px, 96dpi, 17.28x12.43 cm, bb=0 0 490 352
+ \caption{Quality of clustering in London}
+ \label{fig:LDNsil}
+\end{figure}
+
+            On the other hand some of these clusters do tally with the postcodes that many might think are similar:
+            \begin{description}
+                \item[Clusters 1 and 9] are the expensive West London postcodes together with a couple of other affluent areas such as the Docklands(E14) and Wimbledon (SW19).
+                \item[Cluster 2] are islands of affluence in London especially in the South-West.
+                \item[Cluster 4] is the less affluent but trendier areas of South and East London.
+                \item[Cluster 3] almost entirely consists of average residential areas outside travel Zone 3.
+                \item[Central London] is a mix of small and singleton clusters which makes sense as these areas are very different from each other and the rest of London.
+                \item[Cluster 8] has nothing obvious tying its members together --- it may be spurious.
+            \end{description}
+            
+        \subsection{Both cities}
+            When looking for similar neighbourhoods I had considered clustering on one city and then using a classification algorithm classify neighbourhoods in the second city.
+            The problem with this is the sparse feature matrix across 200 dimensions would make it extremely unreliable.
+            Instead I looked at clustering all neighbourhoods in both concatenated together.
+            This suffers from the same issue of dimensionality but hopefully to a lesser extent.
+            
+            I again dropped latitudes and longitudes before comparing as they would have certainly made a difference!
+            
+            Repeatedly looking for good values of k led me to a clustering where k=9 and another where k=12.
+            The silhoutte plots for these are in \Cref{fig:sils9and12}.
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.4\textwidth}
+        \includegraphics[bb=0 0 382 273,scale=0.4]{graphics/sil9.png}
+        % sil9.png: 510x364 px, 96dpi, 13.49x9.63 cm, bb=0 0 382 273
+        \caption{k = 9}
+    \end{subfigure}
+    \qquad
+    \begin{subfigure}[b]{0.4\textwidth}
+        \includegraphics[bb=0 0 382 273,scale=0.4]{graphics/sil12.png}
+        % sil12.png: 510x364 px, 96dpi, 13.49x9.63 cm, bb=0 0 382 273
+        \caption{k = 12}
+    \end{subfigure}
+    \caption{Silhoutte plots for k-means clustering of all neighbourhoods}
+    \label{fig:sils9and12}
+\end{figure}
+            Neither clustering is stellar but k=9 appears to have better defined clusters than k=12 (which is to be expected).
+
+            One interesting is that, in both cases, most clusters included only neighbourhoods from one of the cities.
+
+    \section{Discussion}
+            The scheme used here resulted in a sparse feature matrix for both cities.
+            This is problematic for clustering as \textsl{feature = 0} in two neighbourhoods does not really mean they have anything in common other than their \emph{lack} of an amenity.
+            The only consistently non-zero attribute is the average house price.
+            This means that much of the distinctions between clusters might be based more heavily on this than on the other attributes as the other attributes will generally be zero for
+            both neighbourhoods (similar) and only very occasionally non-zero/zero (different).
+
+            I am also unsure as to whether London/Milwaukee differences are caused by difference in classification.
+            Is a 'Burger joint' in Milwaukee likely to be categorised as an 'American restaurant' in London etc?
+            There is no easy way to tell.
+            Moreover some places are categorised very specifically for example \textit{Greek restaurant} while others are just \textit{Food}.
+            What is really needed is fewer, broader categories.
+            
+            With these caveats I there are still some interesting associations when looking at the lists of similar neighbourhoods for example E4
+            is in a singleton group in both cases.  Perhaps there is something very particular about that area of the Lea Valley.
+            
+            That clusters of all neighbourhoods tended to be from one city or the other suggests that the neighbourhoods are highly dissimilar,
+            even based on features the cities have in common.
+
+            The k = 12 clustering in London in \Cref{fig:LDNclusters} was particularly interesting as it separated the city into 5 broad groups:
+            \begin{itemize}
+            	\item Rich West Inner London
+            	\item Edgy Inner South and East
+            	\item Affluent Suburban (often closer to the centre)
+            	\item Regular Suburban (often further from the centre)
+            	\item Central London/CBD
+            \end{itemize}
+            The last of these is actually a diverse group of singleton/small clusters geographically close together.
+
+            We are now looking at some areas in cluster 4 \footnote{SW2, SW4, SW9, SW12, SW17, SE4, SE5, SE8, SE24, E1, E2, E8, E9 and N16} as places to move next.
+    \section{Conclusion}
+        Milwaukee and London are sufficiently different that it is not possible to compare neighbourhoods between them.
+        Milwaukee neighbourhoods are more similar to each other than London postcodes and hence are more difficult to categorise.
+
+        I am not sure that the approach here is likely to work well and is not easily savleagable.
+        What is needed is fewer categories with more eveny dispersed values - crime rates, tax levels, pollution levels, etc.
+        Foursquare's feature data is not amenable to clustering.
+
+        However some personally useful information has been gleaned and that has certainly made it worthwhile.
+\end{document}
